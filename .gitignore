@@ -2,3 +2,6 @@
 zig-out/
 zig-pkg/
 *.o
+
+inputs/*
+!inputs/.gitkeep

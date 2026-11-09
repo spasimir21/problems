@@ -6,7 +6,8 @@ const config = @import("config");
 const allProblems = Problem.group(
   .{},
   .{
-    @import("./aoc/problems.zig").problems
+    @import("./aoc/problems.zig").problems,
+    @import("./ec/problems.zig").problems
   }
 );
 

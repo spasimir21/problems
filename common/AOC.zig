@@ -26,7 +26,7 @@ fn problemsForDayCount(comptime options: DayOptions) usize {
 }
 
 pub fn problemsForDay(comptime options: DayOptions) [problemsForDayCount(options)]Problem {
-  const input: Problem.Input = .{ .path = std.fmt.comptimePrint("aoc/{d}/day-{}.txt", .{ options.year, options.day }) };
+  const input: Problem.Input = .{ .path = std.fmt.comptimePrint("aoc/{d}/day-{d}.txt", .{ options.year, options.day }) };
   var problems: [problemsForDayCount(options)]Problem = undefined;
 
   var index: usize = 0;

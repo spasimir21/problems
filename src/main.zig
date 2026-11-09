@@ -39,13 +39,16 @@ pub fn main(init: std.process.Init) !void {
   const total = correct + incorrect + unknown;
 
   try stdout.interface.print(
-    "\x1b[3m{s}\x1b[0m \x1b[1m{d}/{d}\x1b[0m problems ran: \x1b[32m{d} correct\x1b[0m, \x1b[31m{d} incorrect\x1b[0m, \x1b[33m{d} unknown\x1b[0m, \x1b[2min {d} ms\x1b[0m\n",
+    "\x1b[3m{s}\x1b[0m \x1b[1m{d}/{d}\x1b[0m problems ran: \x1b[{s}32m{d} correct\x1b[0m, \x1b[{s}31m{d} incorrect\x1b[0m, \x1b[{s}33m{d} unknown\x1b[0m, \x1b[2min {d} ms\x1b[0m\n",
     .{
       if (total == problems.len) "All" else "Only",
       total,
       problems.len,
+      if (correct == 0) "2;" else "",
       correct,
+      if (incorrect == 0) "2;" else "",
       incorrect,
+      if (unknown == 0) "2;" else "",
       unknown,
       totalDuration.toMilliseconds()
     }

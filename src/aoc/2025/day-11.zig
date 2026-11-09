@@ -1,6 +1,33 @@
 const AOC = @import("common").AOC;
 const std = @import("std");
 
+const TEST_INPUTS = .{
+  \\aaa: you hhh
+  \\you: bbb ccc
+  \\bbb: ddd eee
+  \\ccc: ddd eee fff
+  \\ddd: ggg
+  \\eee: out
+  \\fff: out
+  \\ggg: out
+  \\hhh: ccc fff iii
+  \\iii: out
+  ,
+  \\svr: aaa bbb
+  \\aaa: fft
+  \\fft: ccc
+  \\bbb: tty
+  \\tty: ccc
+  \\ccc: ddd eee
+  \\ddd: hub
+  \\hub: fff
+  \\eee: dac
+  \\dac: fff
+  \\fff: ggg hhh
+  \\ggg: out
+  \\hhh: out
+};
+
 const Connections = []const usize;
 const Graph = []const ?Connections;
 
@@ -121,46 +148,7 @@ pub const problems = AOC.problemsForDay(.{
   .year = 2025,
   .day = 11,
   .parts = &.{
-    .{
-      .run = &part1,
-      .expected = 782,
-      .@"test" = .{
-        .input =
-          \\aaa: you hhh
-          \\you: bbb ccc
-          \\bbb: ddd eee
-          \\ccc: ddd eee fff
-          \\ddd: ggg
-          \\eee: out
-          \\fff: out
-          \\ggg: out
-          \\hhh: ccc fff iii
-          \\iii: out
-          ,
-        .expected = 5
-      }
-    },
-    .{
-      .run = &part2,
-      .expected = 401398751986160,
-      .@"test" = .{
-        .input =
-          \\svr: aaa bbb
-          \\aaa: fft
-          \\fft: ccc
-          \\bbb: tty
-          \\tty: ccc
-          \\ccc: ddd eee
-          \\ddd: hub
-          \\hub: fff
-          \\eee: dac
-          \\dac: fff
-          \\fff: ggg hhh
-          \\ggg: out
-          \\hhh: out
-          ,
-        .expected = 2
-      }
-    }
+    .{ .run = &part1, .expected = 782, .@"test" = .{ .input = TEST_INPUTS[0], .expected = 5 } },
+    .{ .run = &part2, .expected = 401398751986160, .@"test" = .{ .input = TEST_INPUTS[1], .expected = 2 } }
   }
 });

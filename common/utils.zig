@@ -70,7 +70,7 @@ fn enumeratePairsInternal(
   depth: u8,
   pairs: [][2]T,
   context: anytype,
-  comptime func: fn (anytype, []const [2]T) anyerror!void
+  comptime func: fn (@TypeOf(context), []const [2]T) anyerror!void
 ) !void {
   if (remaining.len == 2) {
     pairs[depth] = remaining[0..2].*;
@@ -95,7 +95,7 @@ pub fn enumeratePairs(
   comptime T: type,
   elements: []const T,
   context: anytype,
-  comptime func: fn (anytype, []const [2]T) anyerror!void,
+  comptime func: fn (@TypeOf(context), []const [2]T) anyerror!void,
   allocator: std.mem.Allocator
 ) !void {
   std.debug.assert(elements.len % 2 == 0);

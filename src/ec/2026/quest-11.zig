@@ -147,6 +147,24 @@ fn part2(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
   return try noLinksStrain(input.nPortals, 3) - minStrain;
 }
 
+const CheckStrain = struct {
+  distances: utils.Matrix(usize),
+  snapshot: []const usize,
+  nPortals: usize,
+  minStrain: *usize,
+
+  pub fn check(ctx: @This(), pairs: []const [2]usize) !void {
+    @memcpy(ctx.distances.values, ctx.snapshot);
+    try updateDistances(ctx.nPortals, pairs[0], ctx.distances);
+    try updateDistances(ctx.nPortals, pairs[1], ctx.distances);
+    try updateDistances(ctx.nPortals, pairs[2], ctx.distances);
+    try updateDistances(ctx.nPortals, pairs[3], ctx.distances);
+
+    const strain = calculateStrain(ctx.distances);
+    if (strain < ctx.minStrain.*) ctx.minStrain.* = strain;
+  }
+};
+
 fn part3(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
   var input: Input = try .init(rawInput, allocator);
   defer input.deinit();
@@ -169,24 +187,13 @@ fn part3(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
     try utils.enumeratePairs(
       usize,
       &crystals,
-      .{
+      CheckStrain {
         .distances = distances,
         .snapshot = snapshot,
         .nPortals = input.nPortals,
         .minStrain = &minStrain
       },
-      struct {
-        pub fn checkStrain(ctx: anytype, pairs: []const [2]usize) !void {
-          @memcpy(ctx.distances.values, ctx.snapshot);
-          try updateDistances(ctx.nPortals, pairs[0], ctx.distances);
-          try updateDistances(ctx.nPortals, pairs[1], ctx.distances);
-          try updateDistances(ctx.nPortals, pairs[2], ctx.distances);
-          try updateDistances(ctx.nPortals, pairs[3], ctx.distances);
-
-          const strain = calculateStrain(ctx.distances);
-          if (strain < ctx.minStrain.*) ctx.minStrain.* = strain;
-        }
-      }.checkStrain,
+      CheckStrain.check,
       allocator
     );
   }

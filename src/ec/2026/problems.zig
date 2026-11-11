@@ -16,6 +16,7 @@ pub const problems = Problem.group(
     @import("./quest-7.zig").problems,
     @import("./quest-8.zig").problems,
     @import("./quest-9.zig").problems,
-    @import("./quest-10.zig").problems
+    @import("./quest-10.zig").problems,
+    @import("./quest-11.zig").problems
   }
 );

@@ -195,6 +195,22 @@ fn part1(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
   return collisions;
 }
 
+fn part2(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
+  var input: Input = try .init(rawInput, allocator);
+  defer input.deinit();
+
+  var occupiedPositions: std.AutoHashMap(Point, usize) = .init(allocator);
+  defer occupiedPositions.deinit();
+
+  var round: usize = 1;
+  while (true) : (round += 1) {
+    const didEnd = try simulateRound(input.walls, input.ghosts, 10_000, &occupiedPositions);
+    if (didEnd) break;
+  }
+
+  return round;
+}
+
 fn findLoop(
   walls: []const []const bool,
   ghosts: []Ghost,
@@ -237,10 +253,11 @@ fn findLoop(
   return loopRounds;
 }
 
-fn simulate(rawInput: []const u8, allocator: std.mem.Allocator, threshold: usize) !usize {
+fn part3(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
   var input: Input = try .init(rawInput, allocator);
   defer input.deinit();
 
+  const threshold = 1_000_000_000_000;
   const walls = input.walls;
   const ghosts = input.ghosts;
 
@@ -282,14 +299,6 @@ fn simulate(rawInput: []const u8, allocator: std.mem.Allocator, threshold: usize
   }
 
   return round;
-}
-
-fn part2(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
-  return simulate(rawInput, allocator, 10_000);
-}
-
-fn part3(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
-  return simulate(rawInput, allocator, 1_000_000_000_000);
 }
 
 pub const problems = EC.problemsForQuest(.{

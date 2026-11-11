@@ -1,5 +1,8 @@
-const EC = @import("common").EC;
+const common = @import("common");
 const std = @import("std");
+
+const utils = common.utils;
+const EC = common.EC;
 
 const TEST_INPUTS = .{
   \\id=1 quest=1 part=1 time=187
@@ -69,19 +72,15 @@ const Input = struct {
     return .{ .iter = std.mem.tokenizeAny(u8, source, "\r\n") };
   }
 
-  fn parseProperty(property: []const u8) !usize {
-    return std.fmt.parseUnsigned(usize, property[std.mem.findScalar(u8, property, '=').? + 1..], 10);
-  }
-
   pub fn next(self: *Input) !?Record {
     const line = self.iter.next() orelse return null;
-    var it = std.mem.splitScalar(u8, line, ' ');
+    var it: utils.SequenceIterator(u8, utils.isBase10Digit) = .init(line);
 
     return .{
-      .id = try parseProperty(it.next().?),
-      .quest = try parseProperty(it.next().?),
-      .part = try parseProperty(it.next().?),
-      .time = try parseProperty(it.next().?)
+      .id = try std.fmt.parseUnsigned(usize, it.next().?, 10),
+      .quest = try std.fmt.parseUnsigned(usize, it.next().?, 10),
+      .part = try std.fmt.parseUnsigned(usize, it.next().?, 10),
+      .time = try std.fmt.parseUnsigned(usize, it.next().?, 10),
     };
   }
 

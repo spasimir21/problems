@@ -69,39 +69,37 @@ fn minimizeDistances(nPortals: usize, connectivity: u8, links: []const Link, dis
   for (0..nPortals) |i|
     for (0..nPortals) |j| {
       const direct = @max(i, j) - @min(i, j);
-      distances.at(i, j).* = try std.math.divCeil(usize, @min(direct, nPortals - direct), connectivity);
+      distances.set(i, j, try std.math.divCeil(usize, @min(direct, nPortals - direct), connectivity));
     };
 
   for (links) |link| {
-    distances.at(link[0], link[1]).* = 1;
-    distances.at(link[1], link[0]).* = 1;
+    distances.set(link[0], link[1], 1);
+    distances.set(link[1], link[0], 1);
   }
 
   for (0..nPortals) |k|
     for (0..nPortals) |i|
-      for (0..nPortals) |j| {
-        distances.at(i, j).* = @min(
-          distances.at(i, j).*,
-          distances.at(i, k).* + distances.at(k, j).*
-        );
-      };
+      for (0..nPortals) |j|
+        distances.set(i, j, @min(
+          distances.get(i, j),
+          distances.get(i, k) + distances.get(k, j)
+        ));
 }
 
 fn updateDistances(nPortals: usize, link: Link, distances: utils.Matrix(usize)) !void {
   const a, const b = link;
 
-  if (distances.at(a, b).* <= 1 and distances.at(b, a).* <= 1) return;
-  distances.at(a, b).* = 1;
-  distances.at(b, a).* = 1;
+  if (distances.get(a, b) <= 1 and distances.get(b, a) <= 1) return;
+  distances.set(a, b, 1);
+  distances.set(b, a, 1);
 
-  for (0..nPortals) |i| {
+  for (0..nPortals) |i|
     for (0..nPortals) |j|
-      distances.at(i, j).* = @min(
-        distances.at(i, j).*,
-        distances.at(i, a).* + 1 + distances.at(b, j).*,
-        distances.at(i, b).* + 1 + distances.at(a, j).*
-      );
-  }
+      distances.set(i, j, @min(
+        distances.get(i, j),
+        distances.get(i, a) + 1 + distances.get(b, j),
+        distances.get(i, b) + 1 + distances.get(a, j)
+      ));
 }
 
 fn calculateStrain(distances: utils.Matrix(usize)) usize {
@@ -114,7 +112,7 @@ fn part1(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
   var input: Input = try .init(rawInput, allocator);
   defer input.deinit();
 
-  const distances: utils.Matrix(usize) = try .init(input.nPortals, input.nPortals, allocator);
+  const distances: utils.Matrix(usize) = try .init(input.nPortals, input.nPortals, 0, allocator);
   defer distances.deinit(allocator);
 
   try minimizeDistances(input.nPortals, 1, input.links, distances);
@@ -126,7 +124,7 @@ fn part2(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
   var input: Input = try .init(rawInput, allocator);
   defer input.deinit();
 
-  const distances: utils.Matrix(usize) = try .init(input.nPortals, input.nPortals, allocator);
+  const distances: utils.Matrix(usize) = try .init(input.nPortals, input.nPortals, 0, allocator);
   defer distances.deinit(allocator);
 
   try minimizeDistances(input.nPortals, 3, input.links, distances);
@@ -169,7 +167,7 @@ fn part3(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
   var input: Input = try .init(rawInput, allocator);
   defer input.deinit();
 
-  const distances: utils.Matrix(usize) = try .init(input.nPortals, input.nPortals, allocator);
+  const distances: utils.Matrix(usize) = try .init(input.nPortals, input.nPortals, 0, allocator);
   defer distances.deinit(allocator);
 
   try minimizeDistances(input.nPortals, 3, input.links, distances);

@@ -46,16 +46,28 @@ pub fn Matrix(comptime T: type) type {
     height: usize,
     values: []T,
 
-    pub fn init(width: usize, height: usize, allocator: std.mem.Allocator) !@This() {
-      return .{
+    pub fn init(width: usize, height: usize, value: T, allocator: std.mem.Allocator) !@This() {
+      const self: @This() = .{
         .width = width,
         .height = height,
         .values = try allocator.alloc(T, width * height)
       };
+
+      @memset(self.values, value);
+
+      return self;
+    }
+
+    pub inline fn get(self: @This(), x: usize, y: usize) T {
+      return self.values[y * self.width + x];
+    }
+
+    pub inline fn set(self: @This(), x: usize, y: usize, value: T) void {
+      self.values[y * self.width + x] = value;
     }
 
     pub inline fn at(self: @This(), x: usize, y: usize) *T {
-      return &self.values[y * self.height + x];
+      return &self.values[y * self.width + x];
     }
 
     pub fn deinit(self: @This(), allocator: std.mem.Allocator) void {
@@ -108,4 +120,23 @@ pub fn enumeratePairs(
   defer allocator.free(remaining);
 
   try enumeratePairsInternal(T, remaining, 0, pairs, context, func);
+}
+
+pub fn OrderedPair(comptime T: type) type {
+  return struct {
+    first: T,
+    second: T,
+
+    pub fn make(a: T, b: T) @This() {
+      return .{ .first = @min(a, b), .second = @max(a, b) };
+    }
+
+    pub fn has(self: @This(), value: T) bool {
+      return self.first == value or self.second == value;
+    }
+
+    pub fn other(self: @This(), value: T) T {
+      return if (self.first == value) self.second else self.first;
+    }
+  };
 }

@@ -79,7 +79,7 @@ fn part1(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
 }
 
 const Seam = struct {
-  pieces: utils.OrderedPair(u8),
+  pieces: utils.OrderedPair(usize),
   size: usize,
 
   pub fn lessThan(ctx: void, a: Seam, b: Seam) bool {
@@ -88,55 +88,7 @@ const Seam = struct {
   }
 };
 
-const FRAME = std.math.maxInt(u8);
-
-fn getSeams(grid: []const []const u8, allocator: std.mem.Allocator) ![]const Seam {
-  var seamMap: std.AutoHashMap(utils.OrderedPair(u8), usize) = .init(allocator);
-  defer seamMap.deinit();
-
-  const width = grid[0].len;
-  const height = grid.len;
-
-  for (0..height) |y|
-    for (0..width) |x| {
-      if (x == 0 or grid[y][x] != grid[y][x - 1]) {
-        const entry = try seamMap.getOrPutValue(.make(
-          grid[y][x],
-          if (x == 0) FRAME else grid[y][x - 1]
-        ), 0);
-
-        entry.value_ptr.* += 1;
-      }
-
-      if (y == 0 or grid[y][x] != grid[y - 1][x]) {
-        const entry = try seamMap.getOrPutValue(.make(
-          grid[y][x],
-          if (y == 0) FRAME else grid[y - 1][x]
-        ), 0);
-
-        entry.value_ptr.* += 1;
-      }
-
-      if (x == width - 1) {
-        const entry = try seamMap.getOrPutValue(.make(grid[y][x], FRAME), 0);
-        entry.value_ptr.* += 1;
-      }
-
-      if (y == height - 1) {
-        const entry = try seamMap.getOrPutValue(.make(grid[y][x], FRAME), 0);
-        entry.value_ptr.* += 1;
-      }
-    };
-
-  var list: std.ArrayList(Seam) = .empty;
-  defer list.deinit(allocator);
-
-  var it = seamMap.iterator();
-  while (it.next()) |entry| try list.append(allocator, .{ .pieces = entry.key_ptr.*, .size = entry.value_ptr.* });
-
-  std.mem.sort(Seam, list.items, {}, Seam.lessThan);
-  return list.toOwnedSlice(allocator);
-}
+const FRAME = '\x00';
 
 fn getPieces(grid: []const []const u8, allocator: std.mem.Allocator) ![]const u8 {
   var pieces: std.ArrayList(u8) = .empty;
@@ -152,24 +104,68 @@ fn getPieces(grid: []const []const u8, allocator: std.mem.Allocator) ![]const u8
   return pieces.toOwnedSlice(allocator);
 }
 
-fn doJoin(a: u8, b: u8, setOf: *std.AutoHashMap(u8, usize)) bool {
-  const setA = setOf.get(a).?;
-  const setB = setOf.get(b).?;
-  if (setA == setB) return false;
-
-  var it = setOf.iterator();
-  while (it.next()) |entry| {
-    if (entry.value_ptr.* == setB) entry.value_ptr.* = setA;
-  }
-
-  return true;
+fn makePiecePair(a: u8, b: u8, pieces: []const u8) utils.OrderedPair(usize) {
+  return .make(
+    std.mem.indexOfScalar(u8, pieces, a).?,
+    std.mem.indexOfScalar(u8, pieces, b).?
+  );
 }
 
-fn getMinimalBindings(pieces: []const u8, seams: []const Seam, setOf: *std.AutoHashMap(u8, usize)) usize {
+fn getSeams(grid: []const []const u8, pieces: []const u8, allocator: std.mem.Allocator) ![]const Seam {
+  var seamMap: std.AutoHashMap(utils.OrderedPair(usize), usize) = .init(allocator);
+  defer seamMap.deinit();
+
+  const width = grid[0].len;
+  const height = grid.len;
+
+  for (0..height) |y|
+    for (0..width) |x| {
+      if (x == 0 or grid[y][x] != grid[y][x - 1]) {
+        const entry = try seamMap.getOrPutValue(makePiecePair(
+          grid[y][x],
+          if (x == 0) FRAME else grid[y][x - 1],
+          pieces
+        ), 0);
+
+        entry.value_ptr.* += 1;
+      }
+
+      if (y == 0 or grid[y][x] != grid[y - 1][x]) {
+        const entry = try seamMap.getOrPutValue(makePiecePair(
+          grid[y][x],
+          if (y == 0) FRAME else grid[y - 1][x],
+          pieces
+        ), 0);
+
+        entry.value_ptr.* += 1;
+      }
+
+      if (x == width - 1) {
+        const entry = try seamMap.getOrPutValue(makePiecePair(grid[y][x], FRAME, pieces), 0);
+        entry.value_ptr.* += 1;
+      }
+
+      if (y == height - 1) {
+        const entry = try seamMap.getOrPutValue(makePiecePair(grid[y][x], FRAME, pieces), 0);
+        entry.value_ptr.* += 1;
+      }
+    };
+
+  var list: std.ArrayList(Seam) = .empty;
+  defer list.deinit(allocator);
+
+  var it = seamMap.iterator();
+  while (it.next()) |entry| try list.append(allocator, .{ .pieces = entry.key_ptr.*, .size = entry.value_ptr.* });
+
+  std.mem.sort(Seam, list.items, {}, Seam.lessThan);
+  return list.toOwnedSlice(allocator);
+}
+
+fn getMinimalBindings(pieces: []const u8, seams: []const Seam, dus: utils.DisjointUnionSet) usize {
   var connections: usize = 0;
   var bindings: usize = 0;
   for (seams) |seam| {
-    if (!doJoin(seam.pieces.first, seam.pieces.second, setOf)) continue;
+    if (!dus.join(seam.pieces.first, seam.pieces.second)) continue;
 
     connections += 1;
     bindings += seam.size;
@@ -187,15 +183,13 @@ fn part2(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
   const pieces: []const u8 = try getPieces(input.grid, allocator);
   defer allocator.free(pieces);
 
-  const seams: []const Seam = try getSeams(input.grid, allocator);
+  const seams: []const Seam = try getSeams(input.grid, pieces, allocator);
   defer allocator.free(seams);
 
-  var setOf: std.AutoHashMap(u8, usize) = .init(allocator);
-  defer setOf.deinit();
+  const dus: utils.DisjointUnionSet = try .init(pieces.len, allocator);
+  defer dus.deinit();
 
-  for (0..pieces.len) |i| try setOf.put(pieces[i], i);
-
-  return getMinimalBindings(pieces, seams, &setOf);
+  return getMinimalBindings(pieces, seams, dus);
 }
 
 fn part3(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
@@ -205,29 +199,26 @@ fn part3(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
   const pieces: []const u8 = try getPieces(input.grid, allocator);
   defer allocator.free(pieces);
 
-  const seams: []const Seam = try getSeams(input.grid, allocator);
+  const seams: []const Seam = try getSeams(input.grid, pieces, allocator);
   defer allocator.free(seams);
 
-  var setOf: std.AutoHashMap(u8, usize) = .init(allocator);
-  defer setOf.deinit();
+  const dus: utils.DisjointUnionSet = try .init(pieces.len, allocator);
+  defer dus.deinit();
 
   var minBindings: usize = std.math.maxInt(usize);
   for (0..pieces.len) |n| {
-    const pieceN = pieces[n];
-    if (pieceN == FRAME) continue;
+    if (pieces[n] == FRAME) continue;
 
     for (n + 1..pieces.len) |m| {
-      const pieceM = pieces[m];
-      if (pieceM == FRAME) continue;
-
-      for (0..pieces.len) |i| try setOf.put(pieces[i], i);
+      if (pieces[m] == FRAME) continue;
+      dus.reset();
 
       for (seams) |seam| {
-        if (seam.pieces.has(pieceN)) _ = doJoin(pieceN, seam.pieces.other(pieceN), &setOf)
-        else if (seam.pieces.has(pieceM)) _ = doJoin(pieceM, seam.pieces.other(pieceM), &setOf);
+        if (seam.pieces.has(n)) _ = dus.join(n, seam.pieces.other(n))
+        else if (seam.pieces.has(m)) _ = dus.join(m, seam.pieces.other(m));
       }
 
-      const bindings = getMinimalBindings(pieces, seams, &setOf);
+      const bindings = getMinimalBindings(pieces, seams, dus);
       if (bindings < minBindings) minBindings = bindings;
     }
   }

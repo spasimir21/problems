@@ -140,3 +140,68 @@ pub fn OrderedPair(comptime T: type) type {
     }
   };
 }
+
+pub const DisjointUnionSet = struct {
+  n: usize,
+  roots: []usize,
+  sizes: []usize,
+  allocator: std.mem.Allocator,
+
+  pub fn init(n: usize, allocator: std.mem.Allocator) !DisjointUnionSet {
+    const roots = try allocator.alloc(usize, n);
+    for (0..n) |i| roots[i] = i;
+
+    const sizes = try allocator.alloc(usize, n);
+    @memset(sizes, 1);
+
+    return .{
+      .n = n,
+      .roots = roots,
+      .sizes = sizes,
+      .allocator = allocator
+    };
+  }
+
+  pub fn reset(self: DisjointUnionSet) void {
+    for (0..self.n) |i| self.roots[i] = i;
+    @memset(self.sizes, 1);
+  }
+
+  pub fn deinit(self: DisjointUnionSet) void {
+    self.allocator.free(self.roots);
+    self.allocator.free(self.sizes);
+  }
+
+  pub fn rootOf(self: DisjointUnionSet, i: usize) usize {
+    std.debug.assert(i < self.n);
+
+    var root = i;
+    while (self.roots[root] != root) root = self.roots[root];
+    
+    var current = i;
+    while (current != root) {
+      const next = self.roots[current];
+      self.roots[current] = root;
+      current = next;
+    }
+
+    return root;
+  }
+
+  pub fn areJoined(self: DisjointUnionSet, i: usize, j: usize) bool {
+    return self.rootOf(i) == self.rootOf(j);
+  }
+
+  pub fn join(self: DisjointUnionSet, i: usize, j: usize) bool {
+    var rootI = self.rootOf(i);
+    var rootJ = self.rootOf(j);
+    if (rootI == rootJ) return false;
+
+    if (self.sizes[rootI] < self.sizes[rootJ]) std.mem.swap(usize, &rootI, &rootJ);
+
+    self.roots[rootJ] = rootI;
+    self.sizes[rootI] += self.sizes[rootJ];
+
+    return true;
+  }
+};

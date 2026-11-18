@@ -31,11 +31,11 @@ pub fn build(b: *std.Build) void {
 
   config.addOption(
     []const u8,
-    "inputRoot",
+    "inputsRoot",
     b.option(
       []const u8,
-      "inputRoot",
-      "The path of the root input directory (default: ./inputs)"
+      "inputs-root",
+      "The root of the inputs directory (default: ./inputs)"
     ) orelse "./inputs"
   );
 

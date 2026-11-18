@@ -17,7 +17,9 @@ pub const Input = struct {
   }
 
   pub fn next(self: *Input) !?Range {
-    const range = self.iter.next() orelse return null;
+    var range = self.iter.next() orelse return null;
+    range = std.mem.trim(u8, range, " \t\r\n");
+
     const dashIndex = std.mem.indexOfScalar(u8, range, '-') orelse return error.InvalidInput;
 
     return .{

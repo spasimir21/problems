@@ -1,5 +1,8 @@
-const AOC = @import("common").AOC;
+const common = @import("common");
 const std = @import("std");
+
+const utils = common.utils;
+const AOC = common.AOC;
 
 const TEST_INPUT =
   \\162,817,812
@@ -91,33 +94,18 @@ fn part1(rawInput: []const u8, allocator: std.mem.Allocator, topNConnections: us
 
   std.mem.sortUnstable(BoxPair, pairs.items, {}, BoxPair.lessThan);
 
-  const circuitOfBox = try allocator.alloc(usize, input.boxes.len);
-  defer allocator.free(circuitOfBox);
+  const dus: utils.DisjointUnionSet = try .init(input.boxes.len, allocator);
+  defer dus.deinit();
 
-  const circuitSizes = try allocator.alloc(usize, input.boxes.len);
-  defer allocator.free(circuitSizes);
+  for (pairs.items[0..topNConnections]) |pair| _ = dus.join(pair.aIndex, pair.bIndex);
 
-  for (0..input.boxes.len) |i| circuitOfBox[i] = i;
-  @memset(circuitSizes, 1);
+  const sizes = try allocator.dupe(usize, dus.sizes);
+  defer allocator.free(sizes);
 
-  for (pairs.items[0..topNConnections]) |pair| {
-    const circuitA = circuitOfBox[pair.aIndex];
-    const circuitB = circuitOfBox[pair.bIndex];
-    if (circuitA == circuitB) continue;
-
-    circuitSizes[circuitA] += circuitSizes[circuitB];
-    circuitSizes[circuitB] = 0;
-
-    for (0..circuitOfBox.len) |i|
-      if (circuitOfBox[i] == circuitB) {
-        circuitOfBox[i] = circuitA;
-      };
-  }
-
-  std.mem.sortUnstable(usize, circuitSizes, {}, std.sort.desc(usize));
+  std.mem.sortUnstable(usize, sizes, {}, std.sort.desc(usize));
 
   var result: usize = 1;
-  for (0..3) |i| result *= circuitSizes[i];
+  for (0..3) |i| result *= sizes[i];
   return result;
 }
 
@@ -138,23 +126,12 @@ fn part2(rawInput: []const u8, allocator: std.mem.Allocator) !usize {
 
   std.mem.sortUnstable(BoxPair, pairs.items, {}, BoxPair.lessThan);
 
-  const circuitOfBox = try allocator.alloc(usize, input.boxes.len);
-  defer allocator.free(circuitOfBox);
-
-  for (0..input.boxes.len) |i| circuitOfBox[i] = i;
+  const dus: utils.DisjointUnionSet = try .init(input.boxes.len, allocator);
+  defer dus.deinit();
 
   var lastPair: BoxPair = undefined;
   for (pairs.items) |pair| {
-    const circuitA = circuitOfBox[pair.aIndex];
-    const circuitB = circuitOfBox[pair.bIndex];
-    if (circuitA == circuitB) continue;
-
-    lastPair = pair;
-
-    for (0..circuitOfBox.len) |i|
-      if (circuitOfBox[i] == circuitB) {
-        circuitOfBox[i] = circuitA;
-      };
+    if (dus.join(pair.aIndex, pair.bIndex)) lastPair = pair;
   }
 
   return @as(usize, @intFromFloat(input.boxes[lastPair.aIndex].x * input.boxes[lastPair.bIndex].x));

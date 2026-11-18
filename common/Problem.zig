@@ -9,12 +9,20 @@ pub const Input = union (enum) {
 
 pub const Func = *const fn([]const u8, std.mem.Allocator) anyerror!usize;
 
+pub const FetchFunc = *const fn(*const anyopaque, *const std.StringHashMap([]const u8), std.Io, std.mem.Allocator) anyerror![]const u8;
+
+pub const Fetch = struct {
+  context: *const anyopaque,
+  func: FetchFunc
+};
+
 id: []const u8,
 name: []const u8,
 tags: []const []const u8,
 input: Input,
 func: Func,
 expected: ?usize = null,
+fetch: ?Fetch = null,
 
 pub const GroupOptions = struct {
   tags: []const []const u8 = &.{},
@@ -46,7 +54,8 @@ pub fn group(comptime options: GroupOptions, comptime problemLists: anytype) [to
         .tags = &newTagsConst,
         .input = problem.input,
         .func = problem.func,
-        .expected = problem.expected
+        .expected = problem.expected,
+        .fetch = problem.fetch
       };
 
       index += 1;
@@ -57,7 +66,12 @@ pub fn group(comptime options: GroupOptions, comptime problemLists: anytype) [to
 
 pub const Filter = struct {
   requiredTags: []const []const u8,
-  forbiddenTags: []const []const u8
+  forbiddenTags: []const []const u8,
+
+  pub fn free(self: Filter, allocator: std.mem.Allocator) void {
+    allocator.free(self.requiredTags);
+    allocator.free(self.forbiddenTags);
+  }
 };
 
 pub fn testFilter(self: Problem, filter: Filter) bool {
@@ -92,36 +106,34 @@ pub const Result = struct {
 
 fn getInput(
   input: Input,
-  inputRoot: []const u8,
+  inputsRoot: []const u8,
   io: std.Io,
   allocator: std.mem.Allocator
 ) ![]const u8 {
   if (input == .literal) return input.literal;
 
-  const path = try std.fs.path.join(allocator, &.{ inputRoot, input.path });
+  const path = try std.fs.path.join(allocator, &.{ inputsRoot, input.path });
   defer allocator.free(path);
 
-  const file = try std.Io.Dir.cwd().openFile(io, path, .{});
-  defer file.close(io);
-
-  var readBuffer: [4 * 1024]u8 = undefined;
-  var reader = file.reader(io, &readBuffer);
-
-  return reader.interface.allocRemaining(allocator, .unlimited);
+  return std.Io.Dir.cwd().readFileAlloc(io, path, allocator, .unlimited);
 }
 
 pub fn run(
   self: Problem,
-  inputRoot: []const u8,
+  inputsRoot: []const u8,
   stdout: *std.Io.Writer,
   io: std.Io,
   allocator: std.mem.Allocator
 ) !Result {
-  const input = try getInput(self.input, inputRoot, io, allocator);
-  defer if (self.input == .path) allocator.free(input);
+  const input = getInput(self.input, inputsRoot, io, allocator) catch |err| switch (err) {
+    error.FileNotFound => null,
+    else => return err
+  };
+
+  defer if (self.input == .path and input != null) allocator.free(input.?);
 
   const startTime: std.Io.Timestamp = .now(io, .boot);
-  const result = self.func(input, allocator);
+  const result = if (input) |i| self.func(i, allocator) else error.MissingInput;
   const duration = startTime.durationTo(.now(io, .boot));
 
   const status: Status =

@@ -53,6 +53,8 @@ pub const Input = struct {
 
   pub fn nextID(self: *Input) !?usize {
     const line = self.iter.next() orelse return null;
+    if (line.len == 0) return null;
+    
     return try std.fmt.parseUnsigned(usize, line, 10);
   }
 };

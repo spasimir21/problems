@@ -19,6 +19,39 @@ pub const DayOptions = struct {
   parts: []const PartOptions
 };
 
+const FetchContext = struct { year: usize, day: usize };
+
+fn fetchInput(
+  opaqueContext: *const anyopaque,
+  secrets: *const std.StringHashMap([]const u8),
+  io: std.Io,
+  allocator: std.mem.Allocator
+) ![]const u8 {
+  const context: *const FetchContext = @ptrCast(@alignCast(opaqueContext));
+
+  const url = try std.fmt.allocPrint(allocator, "https://adventofcode.com/{d}/day/{d}/input", .{ context.year, context.day });
+  defer allocator.free(url);
+
+  const cookie = try std.fmt.allocPrint(allocator, "session={s}", .{ secrets.get("AOC_SESSION") orelse return error.MissingSecret });
+  defer allocator.free(cookie);
+
+  var client: std.http.Client = .{ .allocator = allocator, .io = io };
+  defer client.deinit();
+
+  var response: std.Io.Writer.Allocating = .init(allocator);
+  defer response.deinit();
+
+  const result = try client.fetch(.{
+    .location = .{ .url = url },
+    .method = .GET,
+    .headers = .{ .user_agent = .{ .override = "curl/8.0.0" } },
+    .extra_headers = &.{ .{ .name = "Cookie", .value = cookie } },
+    .response_writer = &response.writer
+  });
+
+  return if (result.status == .ok) response.toOwnedSlice() else error.FailedRequest;
+}
+
 fn problemsForDayCount(comptime options: DayOptions) usize {
   var count: usize = 0;
   for (options.parts) |part| count += if (part.@"test" != null) 2 else 1;
@@ -53,7 +86,11 @@ pub fn problemsForDay(comptime options: DayOptions) [problemsForDayCount(options
       .tags = &.{ partId },
       .input = input,
       .expected = part.expected,
-      .func = part.run
+      .func = part.run,
+      .fetch = .{
+        .context = &FetchContext { .year = options.year, .day = options.day },
+        .func = &fetchInput
+      }
     };
 
     index += 1;

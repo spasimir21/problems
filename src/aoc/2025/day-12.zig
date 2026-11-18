@@ -40,6 +40,8 @@ pub const Input = struct {
 
   pub fn next(self: *Input) !?Board {
     const line = self.iter.next() orelse return null;
+    if (line.len == 0) return null;
+
     var board: Board = .{};
 
     var it = std.mem.splitScalar(u8, line, ' ');

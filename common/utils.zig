@@ -201,6 +201,7 @@ pub const DisjointUnionSet = struct {
 
     self.roots[rootJ] = rootI;
     self.sizes[rootI] += self.sizes[rootJ];
+    self.sizes[rootJ] = 0;
 
     return true;
   }

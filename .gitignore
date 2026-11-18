@@ -3,5 +3,7 @@ zig-out/
 zig-pkg/
 *.o
 
+.env
+
 inputs/*
 !inputs/.gitkeep
